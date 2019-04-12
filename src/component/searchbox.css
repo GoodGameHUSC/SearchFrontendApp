@@ -1,0 +1,48 @@
+.box_search{
+  background-color: #efebeb;
+  height: 50px;
+  display: grid;
+  grid-template-columns: 40px auto 30px 40px;
+  align-items: center;
+  grid-gap: 10px;
+  position: relative;
+}
+.box_search.focus{
+  background-color: white;
+}
+.icon_search{
+  font-size: 18px;
+  color: #928d8d;
+}
+.chevron{
+  font-size: 14px !important;
+  color: #928d8d;
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  text-align: center;
+  align-self: center;
+  justify-self: center;
+  line-height: 25px !important; 
+}
+.chevron:hover{
+  background-color: white;
+  border-radius: 50%;
+  box-shadow: 0 0 4px #dad2d2;
+}
+.main_enter{
+  height: 100%;
+  padding: 10px;
+  color: #535858;
+  font-size: 16px;
+  border: none;
+  background-color: inherit;
+}
+.additional_option{
+  position: absolute;
+    width: calc(100% - 6rem);
+    left: 3rem;
+    z-index: 1;
+    background-color: white;
+    top: calc(100% - 3px);
+}

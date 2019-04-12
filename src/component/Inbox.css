@@ -1,0 +1,7 @@
+.content_inbox{
+  display: grid;
+  grid-template-columns: 30px auto;
+}
+.content_inbox span:nth-child(2){
+  font-size: 12px;
+}
