@@ -3,6 +3,7 @@ import './searchbox.css'
 import ReactCSSTransitionGroup from 'react-addons-css-transition-group';
 import PopUp from './PopUp';
 import autobind from 'class-autobind'
+import { detachModifier } from '../utils/helper';
 
 class SearchBox extends Component {
   constructor(props) {
@@ -10,9 +11,9 @@ class SearchBox extends Component {
     this.state = {
       focusing: false,
       text: '',
-      name : '',
-      result : [],
-      hasError : false
+      name: '',
+      result: [],
+      hasError: false,
     }
     autobind(this)
     this.backendUrl = 'https://protected-falls-80513.herokuapp.com/'
@@ -24,101 +25,101 @@ class SearchBox extends Component {
   onBlur() {
     this.setState({ focusing: true })
   }
-  getName(string){
-    let listText = string.replace(/(\w)*:(\w|\?|\.|\!|\/|\,|\@|(\"+(\w|\s)*\"))*/g,'');
+  getName(string) {
+    let listText = string.replace(/(\w)*:(\w|\?|\.|\!|\/|\,|\@|(\"+(\w|\s)*\"))*/g, '');
     return listText.trim();
   }
   onChange(value, callback) {
     let currentText = this.state.text;
-    this.setState({ 
-      text: this.getName(currentText) +' '+ value, 
-    },callback)
+    this.setState({
+      text: this.getName(currentText) + ' ' + value,
+    }, callback)
   }
-  onChangeRawText(value){
-    this.setState({ 
-      text: value 
+  onChangeRawText(value) {
+    this.setState({
+      text: value
     })
   }
-  onNormalChange(object){
-    let value = this.formatText(object)
-    // this.setState({ object : object})
-    this.onChange(value)
+  
+  onNormalChange(newText) {
+    this.onChange(newText)
   }
-  onEmitDirectSearch(object){
-    let value = this.formatText(object)
-    this.onChange(value, this.find )
+  onEmitDirectSearch(newText) {
+    this.onChange(newText, this.find)
   }
-  find(){
-      const { text} = this.state;
-      const textUrl = this.generateUrl(text);
-      this.search(textUrl)
+  find() {
+    const { text } = this.state;
+    const textUrl = this.generateUrl(text);
+    this.search(textUrl)
   }
-  generateUrl(text){
+  generateUrl(text) {
     let name = this.getName(text);
-    name = name.replace(/\s{2,}/g,' ').trim();
-    let rs = this.backendUrl+'?';
-    rs = rs+'api_key='+this.apiKey+'&';
-    if(name) rs += 'name='+name +'&'; 
+    name = name.replace(/\s{2,}/g, ' ').trim();
+    let rs = this.backendUrl + '?';
+    rs = rs + 'api_key=' + this.apiKey + '&';
+    if (name) rs += 'name=' + name + '&';
 
     let modifierText = '';
-    let listModifier =  text.match(/(\w)*:(\w|\?|\.|\!|\/|\,|\@|(\"+(\w|\s)*\"))*/g);
-    if(listModifier)
-    listModifier.forEach(element => {
-      let text = element.trim().replace(/\"/g,'').replace(/\:/g,"=");
-      modifierText += text+'&'
-    });
+    let listModifier = text.match(/(\w)*:(\w|\?|\.|\!|\/|\,|\@|(\"+(\w|\s)*\"))*/g);
+    if (listModifier)
+      listModifier.forEach(element => {
+        let text = element.trim().replace(/\"/g, '').replace(/\:/g, "=");
+        modifierText += text + '&'
+      });
 
-    rs+= modifierText;
+    rs += modifierText;
     return rs;
   }
 
   formatText(object) {
-    let { type, owner, content, time } = object;
+    let { type, owner, content, date } = object;
     let rs = '';
-    if(type){
+    if (type) {
       if (type.value.trim()) {
         rs += (type.isNega ? 'type:!' : 'type:') + type.value.trim();
         rs += ' '
       }
     }
-    if(owner){
+    if (owner) {
       if (owner.value.trim()) {
-        if(owner.value.includes(' ')) rs += (owner.isNega ? 'owner:!' : 'owner:') +'"' +owner.value.trim() + '"';
+        if (owner.value.includes(' ')) rs += (owner.isNega ? 'owner:!' : 'owner:') + '"' + owner.value.trim() + '"';
         else rs += (owner.isNega ? 'owner:!' : 'owner:') + owner.value.trim();
         rs += ' '
       }
     }
-    if(content){
+    if (content) {
       if (content.value) {
-        if(content.value.includes(' '))  rs += (content.isNega ? 'content:!' : 'content:') + '"'+ content.value.trim() + '"' ;
+        if (content.value.includes(' ')) rs += (content.isNega ? 'content:!' : 'content:') + '"' + content.value.trim() + '"';
         else rs += (content.isNega ? 'content:!' : 'content:') + content.value.trim();
         rs += ' '
       }
     }
-    
-    if (time.begin_time || time.end_time) {
-      rs += (time.isNega ? 'date:!' : 'date:') + (time.begin_time ? time.begin_time : '')+ (time.end_time ? ','+time.end_time : '');
+
+    if (date.begin_time || date.end_time) {
+      rs += (date.isNega ? 'date:!' : 'date:') + (date.begin_time ? date.begin_time : '') + (date.end_time ? ',' + date.end_time : '');
       rs += ' '
     }
     return rs.trim();
   }
 
-  search(url){
-    this.setState({ focusing : false});
-    this.props.sendRequest(url,(status)=>{
+  search(url) {
+    this.setState({ focusing: false });
+    this.props.sendRequest(url, (status) => {
       this.setState({
-        focusing : false,
-        text : status ? this.state.text : ''
+        focusing: false,
+        text: status ? this.state.text : ''
       })
     })
-    
+
   }
   render() {
     const option = (
       this.state.focusing ?
-        <PopUp 
-        onEmitDirectSearch={this.onEmitDirectSearch}
-        onNormalChange ={this.onNormalChange}
+        <PopUp
+          onEmitDirectSearch={this.onEmitDirectSearch}
+          onNormalChange={this.onNormalChange}
+          modifier ={detachModifier(this.state.text)}
+          search = {this.find}
         ></PopUp>
         : ''
     )
@@ -134,9 +135,9 @@ class SearchBox extends Component {
             onBlur={this.onBlur}
             onChange={(e) => this.onChangeRawText(e.target.value)}
             onKeyDown={e => {
-                    if (e.key === 'Enter')
-                      this.find()
-                  }}
+              if (e.key === 'Enter')
+                this.find()
+            }}
             placeholder={'What do you want ?'}
             value={this.state.text}
           />
@@ -145,7 +146,7 @@ class SearchBox extends Component {
             onClick={e => this.setState({ text: '' })}>
           </span>
           <span
-            className={'chevron fa pointer '+(this.state.focusing ? 'fa-chevron-up' : 'fa-chevron-down')}
+            className={'chevron fa pointer ' + (this.state.focusing ? 'fa-chevron-up' : 'fa-chevron-down')}
             onClick={e => this.setState({ focusing: !this.state.focusing })}>
           </span>
         </div>

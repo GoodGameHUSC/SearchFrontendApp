@@ -4,79 +4,172 @@ import './PopUp.css'
 import autobind from 'class-autobind'
 import moment from 'moment';
 import { DatetimePickerTrigger } from 'rc-datetime-picker';
+import { modifierTextToObject, capitizeCase, mergeModifier } from '../utils/helper';
 class PopUp extends Component {
   constructor(props) {
     super(props)
     this.state = {
       show_more: true,
       listType: [],
-      type: {
-        value: '',
-        isNega: false
-      },
-      owner: {
-        value: '',
-        isNega: false
-      },
-      content: {
-        value: '',
-        isNega: false
-      },
-      time: {
-        begin_time: null,
-        end_time: null,
-        isNega: false,
-      },
+      owner_option: '',
+      content: '',
+      type_select: null,
+      owner_select: null,
+      owner_custom: '',
+      date_select: null,
       begin_time: moment().subtract(1, 'days'),
       end_time: moment(),
       show_input_owner: false,
       show_input_time: false,
+      currentTypeActive :'',
     }
     autobind(this)
   }
   componentDidMount() {
     this.setState({
       listType: [
+        'any Type',
         'page',
         'article',
         'advertisement',
         'blog',
       ],
     })
+    this.observe();
+  }
+  componentDidUpdate(prevProps) {
+    let { modifier } = this.props;
+    if (prevProps.modifier !== modifier) {
+      this.observe();
+    }
+  }
+  observe(){
+    let { modifier } = this.props;
+    const objectMod = modifierTextToObject(modifier);
+    let { type, owner, date } = objectMod;
+    this.observeType(type);
+    this.observeOwner(owner);
+    this.observeDate(date);
+  }
+  observeType(type) {
+    if (type.value) {
+      this.setState({
+        type_select: {
+          value: type.value,
+          label: capitizeCase(type.value)
+        },
+        currentTypeActive :type.value,
+      })
+    } else this.setState({
+      type_select: null
+    })
+  }
+  observeOwner(owner) {
+    if (owner.value) {
+      let value = owner.value.toLowerCase();
+      if (value == 'me' && owner.isNega) value = 'not me'
+      if (value != 'me' && value != 'not me') {
+        this.setState({
+          show_input_owner: true,
+          owner_custom: value,
+          owner_select: {
+            value: 'specific owner...',
+            label: capitizeCase('specific owner...')
+          }
+        })
+      } else {
+        this.setState({
+          show_input_owner: false,
+          owner_select: {
+            value: value,
+            label: capitizeCase(value)
+          }
+        })
+      }
+
+    }
+    else this.setState({
+      owner_select: null
+    })
+  }
+  observeDate(date) {
+    if (date.begin_time || date.end_time) {
+      let begin_time = moment(date.begin_time, 'MM/DD/YYYY');
+      let end_time = moment(date.end_time, 'MM/DD/YYYY');
+      if (!end_time.isValid() && begin_time.isValid()) {
+        // specify choose
+        let svalue = '';
+        let times = date.begin_time;
+        if (times === moment().format('MM/DD/YYYY')) svalue = 'today';
+        if (times === moment().subtract(1, 'days').format('MM/DD/YYYY')) svalue = 'yesterday';
+        if (times === moment().subtract(7, 'days').format('MM/DD/YYYY')) svalue = 'last week';
+        if (times === moment().subtract(1, 'months').format('MM/DD/YYYY')) svalue = 'last month';
+        if (svalue)
+          this.setState({
+            show_input_time: false,
+            date_select: {
+              value: svalue,
+              label: capitizeCase(svalue)
+            }
+          })
+        else {
+          this.setState({
+            show_input_time: true,
+            begin_time: begin_time,
+            date_select: {
+              value: 'custom time...',
+              label: capitizeCase('custom time...')
+            }
+          })
+        }
+      }
+      else if (end_time.isValid() || begin_time.isValid()) {
+        this.setState({
+          show_input_time: true,
+          begin_time: begin_time,
+          end_time: end_time,
+          date_select: {
+            value: 'custom time...',
+            label: capitizeCase('custom time...')
+          }
+        })
+      }
+    }
+    else this.setState({
+      date_select: null
+    })
+
   }
 
   formatObject() {
-    let { type, owner, content, time } = this.state;
-   
+    let { type, owner, content, date } = this.state;
     return {
       type,
       owner,
       content,
-      time
+      date
     }
   }
   onChooseTypeDirect(e) {
-    this.setState({
-      type: {
+      this.props.onEmitDirectSearch(mergeModifier(this.props.modifier,'type',{
         value: e,
         isNega: false
-      }
-    }, () => {
-      // this.props.onEmit(this.formatObject())
-      this.props.onEmitDirectSearch(this.formatObject())
-    })
+      })
+    )
   }
-  onChooseType(e) {
+  onChooseType(object) {
+    let {value} = object
+    if(value == 'any Type') value = ''
+    this.props.onNormalChange(mergeModifier(this.props.modifier,'type',{
+      value: value,
+      isNega: false
+    }))
+  }
+  onChooseOwner(object) {
     this.setState({
-      type: {
-        value: e,
-        isNega: false
-      }
-    }, () => {
-      this.props.onNormalChange(this.formatObject())
+      owner_select: object
     })
-  }
-  onChooseOwner(e) {
+    let e = object.value;
     let value = ''
     let isNega = false
     if (e === 'me') value = 'me';
@@ -84,22 +177,10 @@ class PopUp extends Component {
     else if (e === 'anyone') { value = '' }
     else if (e === 'specific owner...') { value = 'show_input_owner' }
     else { value = e.trim(); }
-    this.setState({
-      owner: {
-        value: value,
-        isNega: isNega
-      }
-    },
-      () => {
-        if (this.state.owner.value !== 'show_input_owner') {
-          const {value} = this.state.owner
-          if(value === 'me' || value === 'not me' || value === 'anyone')
-          this.setState({ show_input_owner: false })
-          this.props.onNormalChange(this.formatObject())
-        }
-        else this.setState({ show_input_owner: true, owner: { value: '', isNega: false } })
-      }
-    )
+    this.props.onNormalChange(mergeModifier(this.props.modifier,'owner',{
+      value: value,
+      isNega: isNega
+    }))
   }
   onChangeContent(value) {
     this.setState({
@@ -133,35 +214,33 @@ class PopUp extends Component {
     if (e === 'last month') {
       begin_time = today.subtract(1, 'months').format('MM/DD/YYYY');
     }
-    this.setState({
-      show_input_time : false,
-      time: {
-        begin_time: begin_time,
-        end_time: end_time,
-        isNega: false
-      }
-    }, () => {
-      this.props.onNormalChange(this.formatObject())
-    })
+    this.props.onNormalChange(mergeModifier(this.props.modifier,'date',{
+      begin_time: begin_time,
+      end_time: end_time,
+      isNega: false
+    }))
   }
   handleChange = (type, moment) => {
-    let begin_time = (type === 'begin_time') ? moment.format('MM/DD/YYYY') : this.state.time.begin_time;
-    let end_time = (type === 'end_time') ? moment.format('MM/DD/YYYY') : this.state.time.end_time;
     this.setState({
       [type]: moment,
-      time: {
-        begin_time: begin_time,
-        end_time: end_time,
+    },()=>{
+      this.props.onNormalChange(mergeModifier(this.props.modifier,'date',{
+        begin_time: this.state.begin_time.format('MM/DD/YYYY'),
+        end_time: this.state.end_time.format('MM/DD/YYYY'),
         isNega: false
-      }
-    }, () => {
-      this.props.onNormalChange(this.formatObject())
+      }))
     });
+     
   }
-
+  customInputOwner(value) {
+    this.setState({ owner_custom: value });
+  }
   render() {
     const listType = this.state.listType.map((element, k) => {
-      return <p key={k} onClick={(e) => this.onChooseTypeDirect(element)}>
+      if(k > 0)
+      return <p key={k}
+      className={this.state.currentTypeActive == element ? 'bg-info text-white' : ''}
+       onClick={(e) => this.onChooseTypeDirect(element)}>
         {element}
       </p>
     })
@@ -170,7 +249,8 @@ class PopUp extends Component {
         <div className={'col-lg-6 col-md-10 col-sm-12 m-lg-0 m-md-auto float-left'}>
           <span>Type : </span>
           <Select
-            onChange={(ob) => this.onChooseType(ob.value)}
+            value={this.state.type_select}
+            onChange={(value) => this.onChooseType(value)}
             options={this.state.listType.map(e => { return { value: e, label: e.charAt(0).toUpperCase() + e.slice(1) } })}
           />
         </div>
@@ -178,7 +258,8 @@ class PopUp extends Component {
         <div className={'col-lg-6 col-md-10 col-sm-12 m-lg-0 m-md-auto float-left'}>
           <span>Owner : </span>
           <Select
-            onChange={(ob) => this.onChooseOwner(ob.value)}
+            value={this.state.owner_select}
+            onChange={(value) => this.onChooseOwner(value)}
             options={['anyone', 'me', 'not me', 'specific owner...'].map(e => { return { value: e, label: e.charAt(0).toUpperCase() + e.slice(1) } })}
           />
         </div>
@@ -189,8 +270,8 @@ class PopUp extends Component {
               <div>
                 <input
                   className={'form-control'}
-                  value={this.state.owner.value}
-                  onChange={e => this.setState({ owner: { value: e.target.value, isNega: false } })}
+                  value={this.state.owner_custom}
+                  onChange={e => this.customInputOwner(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === 'Enter')
                       this.onChooseOwner(this.state.owner.value)
@@ -201,7 +282,7 @@ class PopUp extends Component {
             : ''
         }
         <div className={'p-0 col-12'}></div>
-        <div className={'col-sm-12 col-md-10'}>
+        {/* <div className={'col-sm-12 col-md-10'}>
           <span>Content : </span>
           <div>
             <input
@@ -215,12 +296,14 @@ class PopUp extends Component {
             />
           </div>
         </div>
+         */}
         <div className={'col-md-6 col-sm-12'}>
           <span>Time : </span>
-            <Select
-              onChange={(ob) => this.onChooseTime(ob.value)}
-              options={['any time', 'today', 'yesterday', 'last week', 'last month', 'custom time...'].map(e => { return { value: e, label: e.charAt(0).toUpperCase() + e.slice(1) } })}
-            />
+          <Select
+            value={this.state.date_select}
+            onChange={(ob) => this.onChooseTime(ob.value)}
+            options={['any time', 'today', 'yesterday', 'last week', 'last month', 'custom time...'].map(e => { return { value: e, label: e.charAt(0).toUpperCase() + e.slice(1) } })}
+          />
         </div>
         <div className={'p-0 col-12'}></div>
         {
@@ -254,8 +337,8 @@ class PopUp extends Component {
             : ''
         }
         <div className={'col-12 justify-content-center justify-content-md-start pt-5 text-center'}>
-          <button className={'btn btn-primary rounded-pill'} onClick={()=>this.props.onEmitDirectSearch(this.formatObject())}>Search</button>
-          <button className={'btn rounded-pill btn-outline-info mx-2'} onClick={()=> this.setState({showMore : false})}>Back</button>
+          <button className={'btn btn-primary rounded-pill'} onClick={() => this.props.search()}>Search</button>
+          <button className={'btn rounded-pill btn-outline-info mx-2'} onClick={() => this.setState({ showMore: false })}>Back</button>
         </div>
       </div>
     )
